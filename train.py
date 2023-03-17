@@ -13,7 +13,7 @@ model_folder   = os.path.join(current_folder, "models/models")
 if not os.path.exists(model_folder):
     os.makedirs(model_folder)
 
-model_savename = os.path.join(model_folder, "yolo_v1_vgg19-{}.h5".format(datetime.datetime.now().strftime("%y%m%d_%H%M%S")))
+model_savename = os.path.join(model_folder, "yolo_v1p5-{}.h5".format(datetime.datetime.now().strftime("%y%m%d_%H%M%S")))
 
 if (__name__ == "__main__"):
 
