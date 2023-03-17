@@ -163,13 +163,13 @@ def draw_bounding_boxes(image : numpy.ndarray, bounding_boxes : numpy.ndarray) -
     return image
 
 class YoloData:
-    def __init__(self, S : int, C : int, input_shape : Tuple[ int, int, int ], use_vgg19 : bool = True, brightness_range : Optional[ Tuple[ float, float ] ] = (0.5, 1.1)) -> None:
+    def __init__(self, S : int, C : int, input_shape : Tuple[ int, int, int ], use_pretrain : bool = True, brightness_range : Optional[ Tuple[ float, float ] ] = (0.5, 1.1)) -> None:
         assert isinstance(S, int)
         assert isinstance(C, int)
         assert isinstance(input_shape, tuple)
-        assert isinstance(use_vgg19, bool)
+        assert isinstance(use_pretrain, bool)
         assert isinstance(brightness_range, tuple)
-        (self.S, self.C, self.input_shape, self.use_vgg19, self.brightness_range) = (S, C, input_shape, use_vgg19, brightness_range)
+        (self.S, self.C, self.input_shape, self.use_pretrain, self.brightness_range) = (S, C, input_shape, use_pretrain, brightness_range)
 
     @staticmethod 
     def find_files_in_folder(folder_name : str) -> List[ str ]:
@@ -233,7 +233,7 @@ class YoloData:
     def _preprocess_images(self, images : numpy.ndarray, is_test_set : bool = False) -> numpy.ndarray:
         if (is_test_set):
             return images 
-        return ((preprocess_input(images)) if (self.use_vgg19) else (images / 255.0))
+        return ((preprocess_input(images)) if (self.use_pretrain) else (images / 255.0))
 
     def initialize_generator(self, batch_size : int, image_folder : str, label_folder : str, max_images : Optional[ int ] = None) -> Tuple[ int, Iterator[ Tuple[ numpy.ndarray, numpy.ndarray ] ] ]:
         assert isinstance(batch_size, int)
