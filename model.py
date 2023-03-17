@@ -31,8 +31,6 @@ class YoloModel(Model):
         for layer in self.convolution.layers:
             layer.trainable = False 
 
-        self.input_layer_2 = Input(shape = self.convolution.output_shape)
-
         self.sub_model = Sequential([
             Conv2D(1024,        (1, 1), name = "yolo_conv_1", padding = "same"),
             LeakyReLU(0.1,              name = "yolo_relu_1"),
@@ -46,6 +44,7 @@ class YoloModel(Model):
             BatchNormalization(         name = "yolo_norm_3")
         ])
         """
+        self.input_layer_2 = Input(shape = self.convolution.output_shape)
         #
         self.conv_1 = Conv2D(1024,        (1, 1), name = "yolo_conv_1", padding = "same")(self.input_layer_2)
         self.relu_1 = LeakyReLU(0.1,              name = "yolo_relu_1")(self.conv_1)

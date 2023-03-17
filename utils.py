@@ -236,7 +236,7 @@ class YoloUtils:
         """
 
         # extracted_bounding_boxes : (N * S * S, 7)
-        extracted_bounding_boxes = class_.reduce_select_bounding_boxes(pred_boxes, S, C) 
+        extracted_bounding_boxes = class_.convert_cells_to_bounding_boxes(pred_boxes, S, C) 
 
         # convert to list of list [ [ img_idx, obj_scr, cls_idx, x, y, w, h ] ]
         extracted_bounding_boxes = extracted_bounding_boxes.numpy().tolist()
