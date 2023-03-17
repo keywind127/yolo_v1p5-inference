@@ -99,3 +99,31 @@ class YoloModel(Model):
         if (verbose):
             print("mAP: {}".format(mean_average_precision))
         return mean_average_precision
+
+    def save_as_functional_model(self, filename : str, *args, **kwargs) -> None:
+        output_layer = self.convolution.output 
+        output_layer = self.sub_model(output_layer)
+        output_layer = self.conv_4(output_layer)
+        Model(self.input_layer, output_layer).save(filename, *args, **kwargs)
+
+if (__name__ == "__main__"):
+
+    test = 0
+
+    if (test == 1):
+            
+        yolo_model = YoloModel(20, (448, 448, 3))
+
+        yolo_model.compile(None, optimizer = "adam", loss = "mse")
+
+        import tensorflow as tf 
+
+        yolo_model.save_as_functional_model("models/models/model_save.h5")#, include_optimizer = False)
+
+    if (test == 2):
+
+        from tensorflow.keras.models import load_model 
+
+        yolo_model = load_model("models/models/model_save.h5")
+
+        yolo_model.summary() 
