@@ -152,14 +152,14 @@ class YoloDataAugmenter:
 
         return (images, labels)
 
-def draw_bounding_boxes(image : numpy.ndarray, bounding_boxes : numpy.ndarray) -> numpy.ndarray:
+def draw_bounding_boxes(image : numpy.ndarray, bounding_boxes : numpy.ndarray, box_color : Optional[ Tuple[ int, int, int ] ] = (0, 255, 0)) -> numpy.ndarray:
     (h, w, c) = image.shape
     for bounding_box in bounding_boxes:
         (t, x01, y01, w01, h01) = bounding_box 
         (sx, sy, ex, ey) = (
             int(w * (x01 - w01 / 2)), int(h * (y01 - h01 / 2)), int(w * (x01 + w01 / 2)), int(h * (y01 + h01 / 2))
         )
-        image = cv2.rectangle(image, (sx, sy), (ex, ey), (0, 255, 0), 2)
+        image = cv2.rectangle(image, (sx, sy), (ex, ey), box_color, 2)
     return image
 
 class YoloData:
@@ -208,7 +208,7 @@ class YoloData:
                     continue 
                 (c, x, y, w, h) = (int(line[0]), *line[1:])
                 (u_x, u_y) = (int(x * self.S), int(y * self.S))
-                (n_x, n_y) = (min(1, max(0, x - u_x)) * self.S, min(1, max(0, y - u_y) * self.S))
+                (n_x, n_y) = (min(1, max(0, x - u_x / self.S)) * self.S, min(1, max(0, y - u_y / self.S) * self.S))
                 label[u_y, u_x, c] = 1.0
                 label[u_y, u_x, self.C : self.C + 5] = numpy.float32([ 1.0, n_x, n_y, w, h ]) 
             return label 
