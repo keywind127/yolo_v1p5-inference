@@ -38,7 +38,7 @@ class YoloModel(Model):
             Conv2D(1536,        (5, 5), name = "yolo_conv_2", padding = "same"),
             LeakyReLU(0.1,              name = "yolo_relu_2"),
             BatchNormalization(         name = "yolo_norm_2"),
-            AveragePooling2D(           name = "yolo_pool_2"),
+            #AveragePooling2D(           name = "yolo_pool_2"),
             Conv2D(1280,        (1, 1), name = "yolo_conv_3", padding = "same"),
             LeakyReLU(0.1,              name = "yolo_relu_3"),
             BatchNormalization(         name = "yolo_norm_3")

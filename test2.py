@@ -1,3 +1,4 @@
+from tensorflow.keras.applications.mobilenet_v2 import preprocess_input 
 from dataset import draw_bounding_boxes, YoloData
 from metrics import YoloMetrics, YoloUtils
 from model import YoloModel
@@ -13,15 +14,11 @@ if not os.path.exists(model_folder):
 
 if (__name__ == "__main__"):
 
-    model_savename = os.path.join(model_folder, "yolo_v1_vgg19-230317_220431.h5")
+    model_savename = os.path.join(model_folder, "yolo_v1p5-230319_104650.h5")
 
-    image_folder          = os.path.join(current_folder, "../Wizard-Detection.v1i.yolov5pytorch/train/images")
+    test_folder = os.path.join(current_folder, "../test_images")
 
-    label_folder          = os.path.join(current_folder, "../Wizard-Detection.v1i.yolov5pytorch/train/labels")
-
-    pretrain_image_folder = os.path.join(current_folder, "../voc-dataset.v1i.yolov5pytorch/train/images")
-
-    pretrain_label_folder = os.path.join(current_folder, "../voc-dataset.v1i.yolov5pytorch/train/labels")
+    image_names = YoloData.find_files_in_folder(test_folder)
 
     # yolo constants / hyperparameters
 
@@ -29,11 +26,11 @@ if (__name__ == "__main__"):
 
     lambda_coord = 5.0
 
-    thresh_obj   = 0.2
+    thresh_obj   = 0.05
 
-    thresh_iou   = 0.2
+    thresh_iou   = 0.05
 
-    S            = 7 # do not change
+    S            = 14 # do not change
 
     C            = 1
 
@@ -49,29 +46,20 @@ if (__name__ == "__main__"):
     
     yolo_model.compile(mean_average_precision = yolo_metrics.mean_average_precision, optimizer = "adam", loss = "mse") 
 
-    yolo_data = YoloData(S, C, input_shape)
+    #yolo_model.save_as_functional_model(os.path.join(model_folder, "wizard-detector_m202023.h5"), include_optimizer = False)
 
-    (quantity, generator) = yolo_data.initialize_generator(32, image_folder, label_folder) 
-
-    (images, labels) = next(generator())
-
-    yolo_model.evaluate(images, labels, verbose = 1)
+    images = preprocess_input(numpy.stack([ cv2.resize(cv2.cvtColor(cv2.imread(filename), cv2.COLOR_BGR2RGB), (input_shape[1], input_shape[0])) for filename in image_names ]))
 
     predictions = yolo_model.predict(images)
 
-    (images, labels) = next(generator(is_test_set = True))
-
-    #bounding_boxes = YoloUtils.extract_and_format_bounding_boxes(predictions, S, C, thresh_obj, thresh_iou).tolist()
-
-    (true_bounding_boxes, pred_bounding_boxes) = (
-        YoloUtils.convert_cells_to_bounding_boxes(labels, S, C, False).numpy().tolist(),
+    (pred_bounding_boxes) = (
         YoloUtils.convert_cells_to_bounding_boxes(predictions, S, C,  True).numpy().tolist()
     )
 
     # pred_bounding_boxes : { (img_idx, obj, cls_idx, x, y, w, h) }
     pred_bounding_boxes = YoloUtils.non_max_suppression(pred_bounding_boxes, thresh_obj, thresh_iou)
 
-    true_bounding_boxes = sorted(filter(lambda x : x[1] >= thresh_obj, true_bounding_boxes), key = lambda x : x[1], reverse = True)
+    images = numpy.stack([ cv2.resize(cv2.imread(filename), (input_shape[1], input_shape[0])) for filename in image_names ])
 
     for idx, prediction in enumerate(predictions):
 
@@ -82,12 +70,6 @@ if (__name__ == "__main__"):
         _bounding_boxes = list(map(lambda x : [ x[2], *x[-4:] ], _bounding_boxes))
 
         image = draw_bounding_boxes(image, _bounding_boxes)
-
-        _bounding_boxes = list(filter(lambda x : x[0] == idx, true_bounding_boxes))
-
-        _bounding_boxes = list(map(lambda x : [ x[2], *x[-4:] ], _bounding_boxes))
-
-        image = draw_bounding_boxes(image, _bounding_boxes, box_color = (0, 0, 255))
 
         cv2.imshow("Wizard Detection Test", image) 
 

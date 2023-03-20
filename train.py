@@ -4,7 +4,7 @@ from tensorflow.keras.optimizers import Adam
 from metrics import YoloMetrics
 from dataset import YoloData
 from model import YoloModel
-import datetime, os, gc
+import datetime, requests, os, gc
 
 current_folder = os.path.dirname(__file__)
 
@@ -29,9 +29,9 @@ if (__name__ == "__main__"):
     pretrain_label_folder = os.path.join(current_folder, "train-voc/labels")
     """
 
-    image_folder          = os.path.join(current_folder, "../Wizard-Detection.v1i.yolov5pytorch/train/images")
+    image_folder          = os.path.join(current_folder, "../wiz-detect.v1i.yolov5pytorch/train/images")
 
-    label_folder          = os.path.join(current_folder, "../Wizard-Detection.v1i.yolov5pytorch/train/labels")
+    label_folder          = os.path.join(current_folder, "../wiz-detect.v1i.yolov5pytorch/train/labels")
 
     pretrain_image_folder = os.path.join(current_folder, "../voc-dataset.v1i.yolov5pytorch/train/images")
 
@@ -47,7 +47,7 @@ if (__name__ == "__main__"):
 
     thresh_iou   = 0.5
 
-    S            = 7 # do not change
+    S            = 14 # do not change
 
     C            = 1
 
@@ -63,9 +63,9 @@ if (__name__ == "__main__"):
 
     epochs          = 128
 
-    num_images      = 2048
+    num_images      = 2048 + 512
 
-    learning_rate   = 5e-5#8e-5
+    learning_rate   = 4e-5#8e-5
 
     # training on PASCAL VOC DATASET
 
@@ -88,7 +88,10 @@ if (__name__ == "__main__"):
     for epoch in range(pretrain_epochs):
         print("Epoch: {}/{}".format(epoch + 1, epochs))
         (images, labels) = next(generator())
-        yolo_model.evaluate(images, labels, verbose = 1)
+        try:
+            requests.get(f"https://api.thingspeak.com/update?api_key=D8J9XHHCIDTQCAF9&field1={yolo_model.evaluate(images, labels, verbose = 1)}", timeout = 10)
+        except:
+            pass 
         yolo_model.fit(generator(), batch_size = batch_size, epochs = 1, shuffle = True, steps_per_epoch = quantity)
         clear_session()
         gc.collect()
@@ -96,6 +99,11 @@ if (__name__ == "__main__"):
         yolo_model.save_middle_weights(model_savename)
 
     # fine-tuning on custom dataset
+
+    try:
+        requests.get(f"https://api.thingspeak.com/update?api_key=D8J9XHHCIDTQCAF9&field1={-1}", timeout = 10)
+    except:
+        pass 
 
     yolo_metrics = YoloMetrics(S, C, lambda_coord, lambda_noobj, thresh_obj, thresh_iou)
 
@@ -118,7 +126,10 @@ if (__name__ == "__main__"):
     for epoch in range(epochs):
         print("Epoch: {}/{}".format(epoch + 1, epochs))
         (images, labels) = next(generator())
-        yolo_model.evaluate(images, labels, verbose = 1)
+        try:
+            requests.get(f"https://api.thingspeak.com/update?api_key=D8J9XHHCIDTQCAF9&field1={yolo_model.evaluate(images, labels, verbose = 1)}", timeout = 10)
+        except:
+            pass 
         yolo_model.fit(generator(), batch_size = batch_size, epochs = 1, shuffle = True, steps_per_epoch = quantity)
         clear_session()
         gc.collect()
