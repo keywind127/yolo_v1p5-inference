@@ -34,15 +34,15 @@ if (__name__ == "__main__"):
 
     current_folder = os.path.dirname(__file__)
 
-    model_name     = os.path.join(current_folder, "models/models/yolo_1p5.h5")
+    model_name     = os.path.join(current_folder, "models/models/yolo_v1p5-230319_104650.h5")
 
-    image_folder   = os.path.join(current_folder, "../images")
+    image_folder   = os.path.join(current_folder, "../test_images")
 
     S = 14 # do not change 
 
     C = 1  # do not change 
 
-    thresh_iou = 0.40
+    thresh_iou = 0.30
 
     thresh_obj = 0.05 
 
@@ -67,7 +67,7 @@ if (__name__ == "__main__"):
 
     for start_idx in range(0, num_images, batch_size):
 
-        sys.stdout.write("\r[ {0:>int_padding}/{1:} ]".format(start_idx + 1, num_images)) 
+        sys.stdout.write("\r[ {0:>{1:}}/{2:} ]".format(start_idx + 1, int_padding, num_images)) 
         sys.stdout.flush() 
 
         end_idx = min(num_images, start_idx + batch_size) 
@@ -106,7 +106,7 @@ if (__name__ == "__main__"):
                     if (box_idx != last_idx):
                         wf.write("\n")
 
-        sys.stdout.write("\r[ {0:>int_padding}/{1:} ]".format(end_idx, num_images)) 
+        sys.stdout.write("\r[ {0:>{1:}}/{2:} ]".format(end_idx, int_padding, num_images)) 
         sys.stdout.flush() 
 
     print("\n")

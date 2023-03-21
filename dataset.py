@@ -66,7 +66,7 @@ class YoloDataAugmenter:
         IN_OUT = numpy.random.randint(0, 2, (n,), dtype = numpy.bool8)
 
         # zoom-out ratio if zooming out 
-        OUT_SZ = numpy.random.uniform(min_scale, 1.0, (n,), dtype = numpy.float32)
+        OUT_SZ = numpy.random.uniform(min_scale, 1.0, (n,)).astype(numpy.float32)
 
         for idx, image in enumerate(images):
 

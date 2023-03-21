@@ -62,7 +62,7 @@ class YoloModel(Model):
             if (layer_type == "batchnorm"):
                 self.sub_model.add(BatchNormalization(name = layer_name))
                 continue 
-        self.conv_f = Conv2D(self.architecture_config["num_classes"] + 10, (3, 3), padding = "same", name = self.architecture_config["output_name"])
+        self.conv_f = Conv2D(self.architecture_config["num_classes"] + 10, (3, 3), padding = "same", name = self.architecture_config["output_name"], activation = "sigmoid")
         self.out = self.call(self.input_layer)
         self.build((None, 448, 448, 3))
         self.mean_average_precision = None 

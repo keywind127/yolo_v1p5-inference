@@ -32,7 +32,7 @@ if (__name__ == "__main__"):
 
     thresh_obj   = 0.05
 
-    thresh_iou   = 0.05
+    thresh_iou   = 0.30
 
     S            = 14 # do not change
 

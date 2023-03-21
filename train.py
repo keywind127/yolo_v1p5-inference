@@ -90,10 +90,10 @@ if (__name__ == "__main__"):
     for epoch in range(pretrain_epochs):
         print("Epoch: {}/{}".format(epoch + 1, epochs))
         (images, labels) = next(generator())
+        mean_AP = yolo_model.evaluate(images, labels, verbose = 1)
         if (training_board is not None):
             try:
-                requests.get(training_board.format(
-                    yolo_model.evaluate(images, labels, verbose = 1)), timeout = 10)
+                requests.get(training_board.format(mean_AP), timeout = 10)
             except:
                 pass 
         yolo_model.fit(generator(), batch_size = batch_size, epochs = 1, shuffle = True, steps_per_epoch = quantity)
@@ -131,10 +131,10 @@ if (__name__ == "__main__"):
     for epoch in range(epochs):
         print("Epoch: {}/{}".format(epoch + 1, epochs))
         (images, labels) = next(generator())
+        mean_AP = yolo_model.evaluate(images, labels, verbose = 1)
         if (training_board is not None):
             try:
-                requests.get(training_board.format(
-                    yolo_model.evaluate(images, labels, verbose = 1)), timeout = 10)
+                requests.get(training_board.format(mean_AP), timeout = 10)
             except:
                 pass 
         yolo_model.fit(generator(), batch_size = batch_size, epochs = 1, shuffle = True, steps_per_epoch = quantity)
