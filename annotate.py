@@ -36,7 +36,7 @@ if (__name__ == "__main__"):
 
     model_name     = os.path.join(current_folder, "models/models/yolo_v1p5-230319_104650.h5")
 
-    image_folder   = os.path.join(current_folder, "../test_images")
+    image_folder   = os.path.join(current_folder, "../data/train")
 
     S = 14 # do not change 
 
@@ -57,6 +57,8 @@ if (__name__ == "__main__"):
     yolo_model.compile(None, optimizer = "adam", loss = "mse")
 
     filenames = YoloData.find_files_in_folder(image_folder) 
+
+    filenames = list(filter(lambda x : not os.path.isdir(x), filenames))
 
     if (only_process_new):
         filenames = list(filter(lambda x : not os.path.isfile(os.path.splitext(x)[0] + ".txt"), filenames))

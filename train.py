@@ -29,9 +29,9 @@ if (__name__ == "__main__"):
     pretrain_label_folder = os.path.join(current_folder, "train-voc/labels")
     """
 
-    image_folder          = os.path.join(current_folder, "../wiz-detect.v1i.yolov5pytorch/train/images")
+    image_folder          = os.path.join(current_folder, "../wiz-detect.v2i.yolov5pytorch/train/images")
 
-    label_folder          = os.path.join(current_folder, "../wiz-detect.v1i.yolov5pytorch/train/labels")
+    label_folder          = os.path.join(current_folder, "../wiz-detect.v2i.yolov5pytorch/train/labels")
 
     pretrain_image_folder = os.path.join(current_folder, "../voc-dataset.v1i.yolov5pytorch/train/images")
 
