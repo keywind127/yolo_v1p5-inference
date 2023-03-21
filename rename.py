@@ -1,3 +1,7 @@
+"""
+    Run this script to shuffle names of files in folder 
+"""
+
 from dataset import YoloData
 import datetime, random, os 
 

@@ -1,6 +1,5 @@
 # yolo utilities 
 
-from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
 from tensorflow.python.framework.ops import EagerTensor
 from tensorflow.keras.backend import epsilon
 import tensorflow as tf 

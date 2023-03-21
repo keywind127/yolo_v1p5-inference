@@ -1,8 +1,6 @@
 # YOLO data
 
-#from tensorflow.keras.applications.resnet50 import preprocess_input
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
-#from tensorflow.keras.applications.vgg19 import preprocess_input
 import numpy, copy, cv2, os
 from typing import *
 

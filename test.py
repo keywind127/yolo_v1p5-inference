@@ -1,3 +1,7 @@
+""" 
+    Run this script to visualize ground-truth and predicted bounding boxes 
+"""
+
 from dataset import draw_bounding_boxes, YoloData
 from metrics import YoloMetrics, YoloUtils
 from model import YoloModel
@@ -43,9 +47,7 @@ if (__name__ == "__main__"):
 
     yolo_metrics = YoloMetrics(S, C, lambda_coord, lambda_noobj, thresh_obj, thresh_iou)
 
-    yolo_model = YoloModel(C, input_shape)
-
-    yolo_model.load_weights(model_savename)
+    yolo_model = YoloModel.load_model_from_disk(model_savename)
     
     yolo_model.compile(mean_average_precision = yolo_metrics.mean_average_precision, optimizer = "adam", loss = "mse") 
 
@@ -57,11 +59,9 @@ if (__name__ == "__main__"):
 
     yolo_model.evaluate(images, labels, verbose = 1)
 
-    predictions = yolo_model.predict(images)
+    predictions = yolo_model.predict(images, verbose = 0)
 
     (images, labels) = next(generator(is_test_set = True))
-
-    #bounding_boxes = YoloUtils.extract_and_format_bounding_boxes(predictions, S, C, thresh_obj, thresh_iou).tolist()
 
     (true_bounding_boxes, pred_bounding_boxes) = (
         YoloUtils.convert_cells_to_bounding_boxes(labels, S, C, False).numpy().tolist(),

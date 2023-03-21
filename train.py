@@ -65,13 +65,15 @@ if (__name__ == "__main__"):
 
     num_images      = 2048 + 512
 
-    learning_rate   = 4e-5#8e-5
+    learning_rate   = 4e-5 #8e-5
+
+    training_board  = None #"https://api.thingspeak.com/update?api_key=D8J9XHHCIDTQCAF9&field1={}"
 
     # training on PASCAL VOC DATASET
 
     yolo_metrics = YoloMetrics(S, pretrain_C, lambda_coord, lambda_noobj, thresh_obj, thresh_iou)
 
-    yolo_model = YoloModel(pretrain_C, input_shape)
+    yolo_model = YoloModel(C = pretrain_C)
 
     yolo_model.summary()
 
@@ -88,10 +90,12 @@ if (__name__ == "__main__"):
     for epoch in range(pretrain_epochs):
         print("Epoch: {}/{}".format(epoch + 1, epochs))
         (images, labels) = next(generator())
-        try:
-            requests.get(f"https://api.thingspeak.com/update?api_key=D8J9XHHCIDTQCAF9&field1={yolo_model.evaluate(images, labels, verbose = 1)}", timeout = 10)
-        except:
-            pass 
+        if (training_board is not None):
+            try:
+                requests.get(training_board.format(
+                    yolo_model.evaluate(images, labels, verbose = 1)), timeout = 10)
+            except:
+                pass 
         yolo_model.fit(generator(), batch_size = batch_size, epochs = 1, shuffle = True, steps_per_epoch = quantity)
         clear_session()
         gc.collect()
@@ -100,14 +104,15 @@ if (__name__ == "__main__"):
 
     # fine-tuning on custom dataset
 
-    try:
-        requests.get(f"https://api.thingspeak.com/update?api_key=D8J9XHHCIDTQCAF9&field1={-1}", timeout = 10)
-    except:
-        pass 
+    if (training_board is not None):
+        try:
+            requests.get(training_board.format(-1), timeout = 10)
+        except:
+            pass 
 
     yolo_metrics = YoloMetrics(S, C, lambda_coord, lambda_noobj, thresh_obj, thresh_iou)
 
-    yolo_model = YoloModel(C, input_shape)
+    yolo_model = YoloModel(C = C)
 
     yolo_model.summary()
 
@@ -126,12 +131,14 @@ if (__name__ == "__main__"):
     for epoch in range(epochs):
         print("Epoch: {}/{}".format(epoch + 1, epochs))
         (images, labels) = next(generator())
-        try:
-            requests.get(f"https://api.thingspeak.com/update?api_key=D8J9XHHCIDTQCAF9&field1={yolo_model.evaluate(images, labels, verbose = 1)}", timeout = 10)
-        except:
-            pass 
+        if (training_board is not None):
+            try:
+                requests.get(training_board.format(
+                    yolo_model.evaluate(images, labels, verbose = 1)), timeout = 10)
+            except:
+                pass 
         yolo_model.fit(generator(), batch_size = batch_size, epochs = 1, shuffle = True, steps_per_epoch = quantity)
         clear_session()
         gc.collect()
 
-        yolo_model.save_weights(model_savename)
+        yolo_model.save_model_to_disk(model_savename)

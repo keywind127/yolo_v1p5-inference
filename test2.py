@@ -1,3 +1,7 @@
+""" 
+    Run this script to visualize predicted bounding boxes 
+"""
+
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input 
 from dataset import draw_bounding_boxes, YoloData
 from metrics import YoloMetrics, YoloUtils
@@ -34,19 +38,13 @@ if (__name__ == "__main__"):
 
     C            = 1
 
-    pretrain_C   = 20
-
     input_shape  = (448, 448, 3) # do not change
 
     yolo_metrics = YoloMetrics(S, C, lambda_coord, lambda_noobj, thresh_obj, thresh_iou)
 
-    yolo_model = YoloModel(C, input_shape)
-
-    yolo_model.load_weights(model_savename)
+    yolo_model = YoloModel.load_model_from_disk(model_savename)
     
     yolo_model.compile(mean_average_precision = yolo_metrics.mean_average_precision, optimizer = "adam", loss = "mse") 
-
-    #yolo_model.save_as_functional_model(os.path.join(model_folder, "wizard-detector_m202023.h5"), include_optimizer = False)
 
     images = preprocess_input(numpy.stack([ cv2.resize(cv2.cvtColor(cv2.imread(filename), cv2.COLOR_BGR2RGB), (input_shape[1], input_shape[0])) for filename in image_names ]))
 
