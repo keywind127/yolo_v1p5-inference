@@ -20,9 +20,9 @@ def load_preprocess_images(filenames : List[ str ]) -> numpy.ndarray:
             for filename in filenames 
     ]))
 
-# yaml format 
+# yaml format [ data.yaml ]
 """ 
-train: ../train/images
+train: ./train/images
 
 nc: 1
 names: ['wizard']
@@ -34,13 +34,13 @@ if (__name__ == "__main__"):
 
     current_folder = os.path.dirname(__file__)
 
-    model_name = os.path.join(current_folder, "models/models/yolo_1p5.h5")
+    model_name     = os.path.join(current_folder, "models/models/yolo_1p5.h5")
 
-    image_folder = os.path.join(current_folder, "../images")
+    image_folder   = os.path.join(current_folder, "../images")
 
     S = 14 # do not change 
 
-    C = 1 # do not change 
+    C = 1  # do not change 
 
     thresh_iou = 0.40
 
@@ -67,7 +67,7 @@ if (__name__ == "__main__"):
 
     for start_idx in range(0, num_images, batch_size):
 
-        sys.stdout.write("\r[ {0:>int_padding}/{1:} ]".format(start_idx, num_images)) 
+        sys.stdout.write("\r[ {0:>int_padding}/{1:} ]".format(start_idx + 1, num_images)) 
         sys.stdout.flush() 
 
         end_idx = min(num_images, start_idx + batch_size) 
