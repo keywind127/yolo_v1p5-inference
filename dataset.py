@@ -49,7 +49,7 @@ class YoloDataAugmenter:
                 labels[idx][..., 1:2] = (1.0 - labels[idx][..., 1:2])
         return (images, labels)
 
-    def _randomly_focus_on_images(self, images : numpy.ndarray, labels : List[ numpy.ndarray ]) -> Tuple[ numpy.ndarray, List[ numpy.ndarray ] ]:
+    def _randomly_focus_on_images(self, images : numpy.ndarray, labels : List[ numpy.ndarray ], min_scale : Optional[ float ] = 0.6) -> Tuple[ numpy.ndarray, List[ numpy.ndarray ] ]:
         """
             Parameters:
                 [ 1 ] images : numpy.ndarray (N, H, W, C)
@@ -61,6 +61,13 @@ class YoloDataAugmenter:
         (n, h, w, c) = images.shape
         augmented_images = []
         augmented_labels = []
+        
+        # whether to zoom in (0) or out (1)
+        IN_OUT = numpy.random.randint(0, 2, (n,), dtype = numpy.bool8)
+
+        # zoom-out ratio if zooming out 
+        OUT_SZ = numpy.random.uniform(min_scale, 1.0, (n,), dtype = numpy.float32)
+
         for idx, image in enumerate(images):
 
             # (B, 5) { cls_idx, x, y, w, h }
@@ -70,6 +77,41 @@ class YoloDataAugmenter:
             if (label is None):
                 augmented_images.append(image)
                 augmented_labels.append(label)
+                continue 
+
+            # zooming out 
+            if (IN_OUT[idx]):
+
+                # initialize a blank image of same size 
+                temp_image = numpy.zeros_like(image, dtype = numpy.uint8)
+
+                # image shape and zoom-out ratio
+                (img_h, img_w, m) = (*image.shape[0:2], OUT_SZ[idx])
+
+                # actual width and height after shrinking image 
+                (dx, dy) = (int(m * img_w), int(m * img_h))
+
+                # actual top-left position to embed shrunk image 
+                (sx, sy) = (
+                    numpy.random.randint(0, img_w - dx + 1),
+                    numpy.random.randint(0, img_h - dy + 1)
+                )
+
+                # embed shrunk image into blank image 
+                temp_image[sy : sy + dy, sx : sx + dx] = cv2.resize(image, (dx, dy))
+
+                augmented_images.append(temp_image)
+
+                label[..., 1:2] = m * label[..., 1:2] + sx / img_w 
+
+                label[..., 2:3] = m * label[..., 2:3] + sy / img_h 
+
+                label[..., 3:4] = m * label[..., 3:4]
+
+                label[..., 4:5] = m * label[..., 4:5]
+
+                augmented_labels.append(label)
+
                 continue 
 
             # (B, 4) { sx, ex, sy, ey } [ xxyy format ]
@@ -233,11 +275,12 @@ class YoloData:
             return images 
         return ((preprocess_input(images)) if (self.use_pretrain) else (images / 255.0))
 
-    def initialize_generator(self, batch_size : int, image_folder : str, label_folder : str, max_images : Optional[ int ] = None) -> Tuple[ int, Iterator[ Tuple[ numpy.ndarray, numpy.ndarray ] ] ]:
+    def initialize_generator(self, batch_size : int, image_folder : str, label_folder : str, max_images : Optional[ int ] = None, use_augment : Optional[ bool ] = True) -> Tuple[ int, Iterator[ Tuple[ numpy.ndarray, numpy.ndarray ] ] ]:
         assert isinstance(batch_size, int)
         assert isinstance(image_folder, str)
         assert isinstance(label_folder, str)
         assert isinstance(max_images, int) or max_images is None 
+        assert isinstance(use_augment, bool)
 
         (image_filenames, label_filenames) = (
             self.find_files_in_folder(image_folder),
@@ -267,7 +310,7 @@ class YoloData:
                         self.load_labels(__label_filenames)
                     )
 
-                    if not (is_test_set):
+                    if ((not is_test_set) and (use_augment)):
                         (images, labels) = data_augmenter.augment_images(images, labels)#, augments = [ data_augmenter.AUG_BRIGHT, data_augmenter.AUG_LRFLIP ])
 
                     (images, labels) = (
