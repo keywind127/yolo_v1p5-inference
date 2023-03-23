@@ -18,9 +18,9 @@ if not os.path.exists(model_folder):
 
 if (__name__ == "__main__"):
 
-    model_savename = os.path.join(model_folder, "yolo_v1p5-230319_104650.h5")
+    model_savename = os.path.join(model_folder, "yolo_v1p5-230321_230516.h5")
 
-    test_folder = os.path.join(current_folder, "../test_images")
+    test_folder = os.path.join(current_folder, "../wizard_data_collect/wizard_images/wizard_images3")
 
     image_names = YoloData.find_files_in_folder(test_folder)
 
@@ -28,11 +28,11 @@ if (__name__ == "__main__"):
 
     lambda_noobj = 0.5
 
-    lambda_coord = 5.0
+    lambda_coord = 5.0 
 
-    thresh_obj   = 0.05
+    thresh_obj   = 0.08
 
-    thresh_iou   = 0.30
+    thresh_iou   = 0.50
 
     S            = 14 # do not change
 

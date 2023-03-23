@@ -296,7 +296,7 @@ class YoloData:
         max_images = min((max_images, len(image_filenames), len(label_filenames))) 
         
         indices = numpy.arange(0, max_images, 1).astype(numpy.int32)
-
+        
         numpy.random.shuffle(indices)
 
         image_filenames = list(map(lambda x : image_filenames[x], indices))
