@@ -97,11 +97,14 @@ class YoloMetrics(YoloUtils):
 
         (true_bounding_boxes, pred_bounding_boxes) = (
             self.convert_cells_to_bounding_boxes(y_true, self.S, self.C, False).numpy().tolist(),
-            self.convert_cells_to_bounding_boxes(y_pred, self.S, self.C,  True).numpy().tolist()
+            self.convert_cells_to_bounding_boxes(y_pred, self.S, self.C,  True).numpy()
         )
 
         # pred_bounding_boxes : { (img_idx, obj, cls_idx, x, y, w, h) }
         pred_bounding_boxes = self.non_max_suppression(pred_bounding_boxes, self.thresh_obj, self.thresh_iou)
+
+        if (isinstance(pred_bounding_boxes, numpy.ndarray)):
+            pred_bounding_boxes = pred_bounding_boxes.tolist()
 
         true_bounding_boxes = sorted(filter(lambda x : x[1] >= self.thresh_obj, true_bounding_boxes), key = lambda x : x[1], reverse = True)
 

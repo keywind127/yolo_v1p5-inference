@@ -65,11 +65,14 @@ if (__name__ == "__main__"):
 
     (true_bounding_boxes, pred_bounding_boxes) = (
         YoloUtils.convert_cells_to_bounding_boxes(labels, S, C, False).numpy().tolist(),
-        YoloUtils.convert_cells_to_bounding_boxes(predictions, S, C,  True).numpy().tolist()
+        YoloUtils.convert_cells_to_bounding_boxes(predictions, S, C,  True).numpy()
     )
 
     # pred_bounding_boxes : { (img_idx, obj, cls_idx, x, y, w, h) }
     pred_bounding_boxes = YoloUtils.non_max_suppression(pred_bounding_boxes, thresh_obj, thresh_iou)
+
+    if (isinstance(pred_bounding_boxes, numpy.ndarray)):
+            pred_bounding_boxes = pred_bounding_boxes.tolist()
 
     true_bounding_boxes = sorted(filter(lambda x : x[1] >= thresh_obj, true_bounding_boxes), key = lambda x : x[1], reverse = True)
 

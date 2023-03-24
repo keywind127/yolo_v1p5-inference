@@ -4,7 +4,7 @@ from tensorflow.python.framework.ops import EagerTensor
 from tensorflow.keras.backend import epsilon
 import tensorflow as tf 
 from typing import *
-import numpy 
+import numpy
 
 class YoloUtils:
 
@@ -194,14 +194,15 @@ class YoloUtils:
 
         return bounding_boxes 
     
+    """
     @classmethod 
     def non_max_suppression(class_, bounding_boxes : List[ List[ float ] ], thresh_obj : float, thresh_iou : float):
-        """
-            Parameters:
-                [ 1 ] bounding_boxes : (N * S * S, 7) { (img_idx, obj, cls_idx, x, y, w, h) }
-            Limitations:
-                [ 1 ] bounding_boxes must be of type list
-        """
+        #
+        #    Parameters:
+        #        [ 1 ] bounding_boxes : (N * S * S, 7) { (img_idx, obj, cls_idx, x, y, w, h) }
+        #    Limitations:
+        #        [ 1 ] bounding_boxes must be of type list
+        #
 
         assert isinstance(bounding_boxes, list)
 
@@ -222,7 +223,135 @@ class YoloUtils:
             suppressed_bounding_boxes.append(bounding_box) 
 
         return suppressed_bounding_boxes
+    """
+
+    @classmethod 
+    def non_max_suppression(class_, bounding_boxes : numpy.ndarray, thresh_obj : float = 0.5, thresh_iou : float = 0.5) -> Union[ numpy.ndarray, list ]:
+        """ 
+            Parameters:
+                [ 1 ] bounding_boxes : (N * S * S * B, 7) { img_idx, obj_idx, cls_idx, x, y, w, h }
+                [ 2 ] thresh_obj [ minimum objectness score ]
+                [ 3 ] thresh_iou [ maximum overlap score ]   
+            Results:
+                [ 1 ] "None" if there are no bounding boxes after NMS
+                [ 2 ] suppressed_bounding_boxes : (-1, 7) otherwise      
+        """
+
+        # force casts bounding boxes to NumPy array
+        if not isinstance(bounding_boxes, numpy.ndarray):
+            bounding_boxes = numpy.float32(bounding_boxes)
+
+        # bounding_boxes : (-1, 7) [ remove bounding boxes with objectness score lower than threshold ]
+        bounding_boxes = numpy.reshape(bounding_boxes[numpy.where(numpy.reshape(numpy.repeat(bounding_boxes[..., 1:2] >= thresh_obj, 7), (-1, 7)))], (-1, 7))
+
+        # return empty list if there are no remaining bounding boxes 
+        if (numpy.shape(bounding_boxes)[0] == 0):
+            return []
+
+        # bounding_boxes : (-1, 7) [ sort bounding boxes by objectness score in non-descending order ]
+        bounding_boxes = bounding_boxes[numpy.argsort(bounding_boxes[..., 1])]
+
+        def intersection_over_union(bounding_boxes : numpy.ndarray, selected_bounding_box : numpy.ndarray, epsilon : Optional[ float ] = 1e-9) -> numpy.ndarray:
+            """
+                Parameters:
+                    [ 1 ] bounding_boxes        : (-1, 4)
+                    [ 2 ] selected_bounding_box : ( 1, 4) 
+            """
+
+            # selected_bounding_box : (-1, 4) [ reshape selected bounding box to simplify matrix operations ]
+            selected_bounding_box = numpy.repeat(selected_bounding_box, numpy.shape(bounding_boxes)[0], axis = 0)
+
+            (x_min, x_max, y_min, y_max) = (
+                numpy.maximum(bounding_boxes[..., 0:1] - bounding_boxes[..., 2:3] / 2, selected_bounding_box[..., 0:1] - selected_bounding_box[..., 2:3] / 2),
+                numpy.minimum(bounding_boxes[..., 0:1] + bounding_boxes[..., 2:3] / 2, selected_bounding_box[..., 0:1] + selected_bounding_box[..., 2:3] / 2),
+                numpy.maximum(bounding_boxes[..., 1:2] - bounding_boxes[..., 3:4] / 2, selected_bounding_box[..., 1:2] - selected_bounding_box[..., 3:4] / 2),
+                numpy.minimum(bounding_boxes[..., 1:2] + bounding_boxes[..., 3:4] / 2, selected_bounding_box[..., 1:2] + selected_bounding_box[..., 3:4] / 2)
+            )
+
+            # intersection : (-1, 1)
+            intersection = numpy.maximum(x_max - x_min, 0) * numpy.maximum(y_max - y_min, 0)
+
+            # union : (-1, 1)
+            union = bounding_boxes[..., 2:3] * bounding_boxes[..., 3:4] + selected_bounding_box[..., 2:3] * selected_bounding_box[..., 3:4] - intersection 
+
+            return intersection / (union + epsilon)
+
+        def suppress_remaining_boxes(bounding_boxes : numpy.ndarray, selected_bounding_box : numpy.ndarray) -> numpy.ndarray:
+            """ 
+                Parameters:
+                    [ 1 ] bounding_boxes        : (-1, 7)
+                    [ 2 ] selected_bounding_box : ( 1, 7)
+            """
+
+            # different_image : (-1, 1) [ whether bounding boxes are in other images ]
+            different_image = bounding_boxes[..., 0:1] != selected_bounding_box[0, 0]
+
+            # different_class : (-1, 1) [ whether bounding boxes are in other classes ]
+            different_class = bounding_boxes[..., 2:3] != selected_bounding_box[0, 2]
+
+            # should_keep     : (-1, 1) [ whether bounding boxes have different "img_idx" or "cls_idx" from selected box ]
+            should_keep = numpy.bitwise_or(different_image, different_class)
+
+            # should_not_keep : (-1, 1) [ opposite of "should_keep" ]
+            should_not_keep = numpy.bitwise_not(should_keep) 
+
+            # low_iou : (-1, 1) [ whether bounding boxes have low "IOU" with selected box, False by default ]
+            low_iou = numpy.zeros(shape = (numpy.shape(bounding_boxes)[0], 1), dtype = numpy.bool8) 
+
+            if (numpy.any(should_not_keep)):
+
+                # bounding_box_info : (-1, 4) [ bounding boxes (xywh) sharing "img_idx" and "cls_idx" with selected box ]
+                bounding_box_info = numpy.reshape(bounding_boxes[numpy.where(numpy.reshape(numpy.repeat(should_not_keep, 7), (-1, 7)))], (-1, 7))[..., -4:]
+
+                low_iou[ numpy.where(should_not_keep) ] = (intersection_over_union(bounding_box_info, selected_bounding_box[..., -4:]) <= thresh_iou).ravel()
+
+            # should_keep : (-1, 7) [ whether to keep bounding box info ]
+            should_keep = numpy.reshape(numpy.repeat(numpy.bitwise_or(should_keep, low_iou), 7, axis = 1), (-1, 7)) 
+
+            # bounding_boxes : (-1, 7) [ keep bounding boxes with different "img_idx" or "cls_idx" or low "IOU" with selected box ]
+            bounding_boxes = numpy.reshape(bounding_boxes[numpy.where(should_keep)], (-1, 7))
+
+            return bounding_boxes 
+
+        suppressed_bounding_boxes = []
+
+        while (bounding_boxes.__len__()):
+
+            suppressed_bounding_boxes.append(bounding_boxes[0]) 
+
+            bounding_boxes = suppress_remaining_boxes(bounding_boxes[1:], bounding_boxes[0:1]) 
+
+        return numpy.stack(suppressed_bounding_boxes)
     
+    @classmethod 
+    def remove_small_bounding_boxes(class_, bounding_boxes : numpy.ndarray, min_area : Optional[ float ] = 0.005) -> Union[ numpy.ndarray, list ]:
+        """
+            Parameters:
+                [ 1 ] bounding_boxes : (-1, 7) { img_idx, obj_idx, cls_idx, x, y, w, h }
+                [ 2 ] min_area [ minimum area for each bounding box ] 
+            Results:
+                [ 1 ] bounding_boxes : (-1, 7) 
+        """
+
+        # return empty list if there are no bounding boxes 
+        if (bounding_boxes.__len__() == 0):
+            return []
+
+        # force casts bounding boxes to NumPy array
+        if not isinstance(bounding_boxes, numpy.ndarray):
+            bounding_boxes = numpy.float32(bounding_boxes)
+
+        # should_keep : (-1, 7)
+        should_keep = numpy.reshape(numpy.repeat((bounding_boxes[..., 5:6] * bounding_boxes[..., 6:7]) >= min_area, 7), (-1, 7))
+
+        if not (numpy.any(should_keep)):
+            return []
+
+        # bounding_boxes : (-1, 7) [ bounding boxes with areas larger than threshold ]
+        bounding_boxes = numpy.reshape(bounding_boxes[ numpy.where(should_keep) ], (-1, 7))
+
+        return bounding_boxes 
+
     @classmethod 
     def extract_and_format_bounding_boxes(class_, pred_boxes : EagerTensor, S : int, C : int, thresh_obj : float = 0.5, thresh_iou : float = 0.5) -> numpy.ndarray:
         """
@@ -238,15 +367,15 @@ class YoloUtils:
         extracted_bounding_boxes = class_.convert_cells_to_bounding_boxes(pred_boxes, S, C) 
 
         # convert to list of list [ [ img_idx, obj_scr, cls_idx, x, y, w, h ] ]
-        extracted_bounding_boxes = extracted_bounding_boxes.numpy().tolist()
+        extracted_bounding_boxes = extracted_bounding_boxes.numpy()#.tolist()
 
         # suppress non-maximal bounding boxes 
         extracted_bounding_boxes = class_.non_max_suppression(extracted_bounding_boxes, thresh_obj, thresh_iou)
 
         # sort bounding boxes by image index
-        extracted_bounding_boxes.sort(key = lambda x : x[0])
+        #extracted_bounding_boxes.sort(key = lambda x : x[0])
 
         # convert to numpy array : (N * S * S, 7)
-        extracted_bounding_boxes = numpy.float32(extracted_bounding_boxes)
+        #extracted_bounding_boxes = numpy.float32(extracted_bounding_boxes)
 
         return extracted_bounding_boxes 

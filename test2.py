@@ -30,9 +30,9 @@ if (__name__ == "__main__"):
 
     lambda_coord = 5.0 
 
-    thresh_obj   = 0.08
+    thresh_obj   = 0.20
 
-    thresh_iou   = 0.50
+    thresh_iou   = 0.10
 
     S            = 14 # do not change
 
@@ -51,11 +51,14 @@ if (__name__ == "__main__"):
     predictions = yolo_model.predict(images)
 
     (pred_bounding_boxes) = (
-        YoloUtils.convert_cells_to_bounding_boxes(predictions, S, C,  True).numpy().tolist()
+        YoloUtils.convert_cells_to_bounding_boxes(predictions, S, C,  True).numpy()
     )
 
     # pred_bounding_boxes : { (img_idx, obj, cls_idx, x, y, w, h) }
     pred_bounding_boxes = YoloUtils.non_max_suppression(pred_bounding_boxes, thresh_obj, thresh_iou)
+
+    if (isinstance(pred_bounding_boxes, numpy.ndarray)):
+            pred_bounding_boxes = pred_bounding_boxes.tolist()
 
     images = numpy.stack([ cv2.resize(cv2.imread(filename), (input_shape[1], input_shape[0])) for filename in image_names ])
 
