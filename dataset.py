@@ -49,7 +49,7 @@ class YoloDataAugmenter:
                 labels[idx][..., 1:2] = (1.0 - labels[idx][..., 1:2])
         return (images, labels)
 
-    def _randomly_focus_on_images(self, images : numpy.ndarray, labels : List[ numpy.ndarray ], min_scale : Optional[ float ] = 0.6) -> Tuple[ numpy.ndarray, List[ numpy.ndarray ] ]:
+    def _randomly_focus_on_images(self, images : numpy.ndarray, labels : List[ numpy.ndarray ], min_scale : Optional[ float ] = 0.75) -> Tuple[ numpy.ndarray, List[ numpy.ndarray ] ]:
         """
             Parameters:
                 [ 1 ] images : numpy.ndarray (N, H, W, C)
@@ -203,20 +203,63 @@ def draw_bounding_boxes(image : numpy.ndarray, bounding_boxes : numpy.ndarray, b
     return image
 
 class YoloData:
-    def __init__(self, S : int, C : int, input_shape : Tuple[ int, int, int ], use_pretrain : bool = True, brightness_range : Optional[ Tuple[ float, float ] ] = (0.5, 1.1)) -> None:
-        assert isinstance(S, int)
-        assert isinstance(C, int)
-        assert isinstance(input_shape, tuple)
-        assert isinstance(use_pretrain, bool)
+
+    def __init__(self, S                : int, 
+                       C                : int, 
+                       input_shape      : Tuple[ int, int, int ], 
+                       brightness_range : Optional[ Tuple[ float, float ] ] = (0.5, 1.1)) -> None:
+        
+        assert isinstance(S,                int  )
+        assert isinstance(C,                int  )
+        assert isinstance(input_shape,      tuple)
         assert isinstance(brightness_range, tuple)
-        (self.S, self.C, self.input_shape, self.use_pretrain, self.brightness_range) = (S, C, input_shape, use_pretrain, brightness_range)
+
+        (self.S, self.C, self.input_shape, self.brightness_range) = (
+            S, C, input_shape, brightness_range
+        )
 
     @staticmethod 
-    def find_files_in_folder(folder_name : str) -> List[ str ]:
-        filenames = sorted(map(lambda x : os.path.join(folder_name, x), os.listdir(folder_name)))
+    def find_files_in_folder(folder_name          : str, 
+                             sort_names           : Optional[ bool ]                      = True, 
+                             filter_by_extensions : Optional[ Union[ str, List[ str ] ] ] = None) -> List[ str ]:
+
+        assert isinstance(folder_name, str) 
+        assert isinstance(sort_names, bool) 
+
+        def __check_folder_exists(folder_name : str) -> str:
+
+            # raise an exception if the specified directory could not be found; otherwise, return the folder name 
+            if not (os.path.isdir(folder_name)):
+                raise IOError(f"The specified directory does not exist: \"{folder_name}\"\n")
+            return folder_name 
+        
+        # all file names in the specified directory 
+        filenames = list(map(lambda x : os.path.join(folder_name, x), os.listdir(__check_folder_exists(folder_name))))
+
+        if (sort_names):
+
+            # sort file names in alphabetical order [ A => Z ]
+            filenames.sort()
+
+        if (filter_by_extensions is not None):
+
+            # "filter_by_extensions" must be "str" or "List[ str ]"
+            if not (isinstance(filter_by_extensions, str) or isinstance(filter_by_extensions, list)):
+                raise Exception(f"Parameter \"filter_by_extensions\" must be \"{str}\" or \"{list}\", not \"{type(filter_by_extensions)}\"\n")
+            
+            # convert "str" to "List[ str * 1 ]"
+            if (isinstance(filter_by_extensions, str)):
+                filter_by_extensions = [ filter_by_extensions ]
+
+            # convert file extension strings to lowercase 
+            filter_by_extensions = list(map(str.lower, filter_by_extensions))
+
+            # remove file names with wrong file extensions 
+            filenames = list(filter(lambda x : os.path.splitext(x)[1].lower() in filter_by_extensions, filenames))
+
         return filenames 
     
-    def load_labels(self, label_files : List[ str ]) -> List[ numpy.ndarray ]:
+    def load_labels(self, label_files : List[ str ]) -> List[ Union[ numpy.ndarray, None ] ]:
         def load_label(filename : str) -> numpy.ndarray:
             loaded_data = filter("".__ne__, open(filename, "r").read().split("\n"))
             loaded_label = []
@@ -257,77 +300,104 @@ class YoloData:
                 for label in labels 
         ])
 
-    def load_images(self, filenames : List[ str ], is_test_set : Optional[ bool ] = False) -> numpy.ndarray:
-        (h, w, c) = self.input_shape 
+    def load_images(self, filenames : List[ str ]) -> numpy.ndarray:
+        (h, w, *_) = self.input_shape 
         loaded_images = numpy.stack([
-            cv2.cvtColor(cv2.resize(cv2.imread(filename), (w, h)), cv2.COLOR_BGR2RGB)
+            cv2.resize(cv2.imread(filename), (w, h))
                 for filename in filenames 
         ])
-        if (is_test_set):
-            return numpy.stack([
-                cv2.cvtColor(image, cv2.COLOR_RGB2BGR) 
-                    for image in loaded_images 
-            ])
         return loaded_images
     
-    def _preprocess_images(self, images : numpy.ndarray, is_test_set : bool = False) -> numpy.ndarray:
-        if (is_test_set):
-            return images 
-        return ((preprocess_input(images)) if (self.use_pretrain) else (images / 255.0))
+    def _preprocess_images(self, images : numpy.ndarray) -> numpy.ndarray:
+        return preprocess_input(numpy.stack([ cv2.cvtColor(image, cv2.COLOR_BGR2RGB) for image in images ]))
 
-    def initialize_generator(self, batch_size : int, image_folder : str, label_folder : str, max_images : Optional[ int ] = None, use_augment : Optional[ bool ] = True) -> Tuple[ int, Iterator[ Tuple[ numpy.ndarray, numpy.ndarray ] ] ]:
-        assert isinstance(batch_size, int)
-        assert isinstance(image_folder, str)
-        assert isinstance(label_folder, str)
-        assert isinstance(max_images, int) or max_images is None 
-        assert isinstance(use_augment, bool)
+    def initialize_generator(self, batch_size   :           int, 
+                                   image_folder :           str, 
+                                   label_folder :           str, 
+                                   max_images   : Optional[ int  ] = None, 
+                                   use_augment  : Optional[ bool ] = True,
+                                   shuffle_data : Optional[ bool ] = True) -> Tuple[ int, Iterator[ tuple ] ]:
+        
+        assert isinstance(batch_size,   int )
+        assert isinstance(image_folder, str )
+        assert isinstance(label_folder, str )
+        assert isinstance(max_images,   int ) or max_images is None 
+        assert isinstance(use_augment,  bool)
+        assert isinstance(shuffle_data, bool)
 
         (image_filenames, label_filenames) = (
             self.find_files_in_folder(image_folder),
             self.find_files_in_folder(label_folder)
         )
 
-        assert len(image_filenames)
-        assert len(label_filenames)
+        num_images = len(image_filenames)
 
-        if (max_images is None):
-            max_images = int(1e20)
+        if (num_images == 0):
+            raise Exception(f"The specified directory \"{image_folder}\" contains no images.\n")
+        
+        if (num_images != len(label_filenames)):
+            raise Exception("The number of images and labels do not match.\n")
+
+        if (max_images is not None):
+            num_images = min(max_images, num_images)
+        
+        if (shuffle_data):
+
+            indices = numpy.arange(0, num_images).astype(numpy.int64)
             
-        max_images = min((max_images, len(image_filenames), len(label_filenames))) 
-        
-        indices = numpy.arange(0, max_images, 1).astype(numpy.int32)
-        
-        numpy.random.shuffle(indices)
+            numpy.random.shuffle(indices)
 
-        image_filenames = list(map(lambda x : image_filenames[x], indices))
+            image_filenames = list(map(lambda x : image_filenames[x], indices))
 
-        label_filenames = list(map(lambda x : label_filenames[x], indices)) 
+            label_filenames = list(map(lambda x : label_filenames[x], indices)) 
 
-        def generate(is_test_set : Optional[ bool ] = False):
-            data_augmenter = YoloDataAugmenter(self.brightness_range)
+        def generate(include_original : Optional[ bool ] = False) -> Iterator[ tuple ]:
+            """ 
+                Parameters:
+                    [ 1 ] include_original [ whether to return original (untampered) images for illustration ]
+                Results:
+                    [ 1 ] (preprocessed_images, preprocessed_labels) [ data augmentation could be toggled by the parameter "use_augment" ]
+                    [ 2 ] (preprocessed_images, preprocessed_labels, original_images) [ data augmentation could be used; original (BGR 0-255) images are appended ]
+            """
+
+            if (use_augment):
+                # initialize the data augmenter for YOLO training 
+                data_augmenter = YoloDataAugmenter(self.brightness_range)
+
             while True:
-                for start_idx in range(0, max_images, batch_size):
-                    end_idx = min(start_idx + batch_size, max_images)
+
+                for start_idx in range(0, num_images, batch_size):
+
+                    indexing = slice(start_idx, min(start_idx + batch_size, num_images))
+
+                    # image and label filenames of current batch 
                     (__image_filenames, __label_filenames) = (
-                        image_filenames[start_idx:end_idx],
-                        label_filenames[start_idx:end_idx]
+                        image_filenames[ indexing ],
+                        label_filenames[ indexing ]
                     ) 
 
+                    # load images (BGR, 0-255, resized) and labels of current batch 
                     (images, labels) = (
-                        self.load_images(__image_filenames, is_test_set),
+                        self.load_images(__image_filenames),
                         self.load_labels(__label_filenames)
                     )
 
-                    if ((not is_test_set) and (use_augment)):
-                        (images, labels) = data_augmenter.augment_images(images, labels)#, augments = [ data_augmenter.AUG_BRIGHT, data_augmenter.AUG_LRFLIP ])
+                    # employ data augmentation 
+                    if (use_augment):
+                        (images, labels) = data_augmenter.augment_images(images, labels) #, augments = [ data_augmenter.AUG_BRIGHT, data_augmenter.AUG_LRFLIP ])
 
-                    (images, labels) = (
-                        self._preprocess_images(images, is_test_set),
+                    # preprocess images (ImageNet) and labels (YOLO)
+                    preprocessed_data = (
+                        self._preprocess_images(images),
                         self._preprocess_labels(labels)
                     )
-                    yield (
-                        images, labels
-                    )
+
+                    # append original images to returning tuple 
+                    if (include_original):
+                        preprocessed_data = (*preprocessed_data, images)
+
+                    yield preprocessed_data
+
         
-        return (max_images, generate)
+        return (num_images, generate)
         

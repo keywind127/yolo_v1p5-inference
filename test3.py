@@ -44,9 +44,14 @@ def identify_client_wizards(wizard_counter_history_size : int = 5) -> Iterator[ 
 
 if (__name__ == "__main__"):
 
+    # >>> filepath to model and data 
+
     model_savename = os.path.join(model_folder, "yolo_v1p5-230321_230516.h5")
 
-    # yolo constants / hyperparameters
+    # <<< filepath to model and data 
+
+
+    # >>> YOLO hyper-parameters
 
     lambda_noobj = 0.5
 
@@ -62,15 +67,23 @@ if (__name__ == "__main__"):
 
     input_shape  = (448, 448, 3) # do not change
 
+    # <<< YOLO hyper-parameters
+
+    #
+
     yolo_metrics = YoloMetrics(S, C, lambda_coord, lambda_noobj, thresh_obj, thresh_iou)
 
     yolo_model = YoloModel.load_model_from_disk(model_savename)
     
     yolo_model.compile(mean_average_precision = yolo_metrics.mean_average_precision, optimizer = "adam", loss = "mse") 
 
+    #
+
     wizard_identifier = identify_client_wizards(10)
 
-    while True:
+    keep_running = True 
+
+    while (keep_running):
 
         images = numpy.stack([ cv2.resize(take_screenshot(), (input_shape[1], input_shape[0])) ])
 
@@ -90,6 +103,8 @@ if (__name__ == "__main__"):
 
             cv2.imshow("Wizard Detection Test", image) 
 
-            cv2.waitKey(1)
+            if (cv2.waitKey(1) == 27):
+                keep_running = False 
+                break 
 
     cv2.destroyAllWindows()

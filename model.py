@@ -26,7 +26,13 @@ class YoloModel(Model):
             [ "batchnorm", "yolo_norm_2" ],
             [ "conv2d", 1280, [ 1, 1 ], "same", "yolo_conv_3" ],
             [ "leakyrelu", "yolo_relu_3" ],
-            [ "batchnorm", "yolo_norm_3" ]
+            [ "batchnorm", "yolo_norm_3" ],
+            [ "conv2d", 1536, [ 3, 3 ], "same", "yolo_conv_4" ],
+            [ "leakyrelu", "yolo_relu_4" ],
+            [ "batchnorm", "yolo_norm_4" ],
+            [ "conv2d", 1280, [ 1, 1 ], "same", "yolo_conv_5" ],
+            [ "leakyrelu", "yolo_relu_5" ],
+            [ "batchnorm", "yolo_norm_5" ]
         ],
         "output_name" : "yolo_conv_f"
     }

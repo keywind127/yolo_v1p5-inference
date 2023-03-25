@@ -193,37 +193,6 @@ class YoloUtils:
         bounding_boxes = tf.reshape(tf.concat([  I, O, T, X, Y, W, H  ], axis = 3), (-1, 7))
 
         return bounding_boxes 
-    
-    """
-    @classmethod 
-    def non_max_suppression(class_, bounding_boxes : List[ List[ float ] ], thresh_obj : float, thresh_iou : float):
-        #
-        #    Parameters:
-        #        [ 1 ] bounding_boxes : (N * S * S, 7) { (img_idx, obj, cls_idx, x, y, w, h) }
-        #    Limitations:
-        #        [ 1 ] bounding_boxes must be of type list
-        #
-
-        assert isinstance(bounding_boxes, list)
-
-        bounding_boxes = sorted(filter(lambda x : x[1] >= thresh_obj, bounding_boxes), key = lambda x : x[1], reverse = True)
-
-        suppressed_bounding_boxes = []
-
-        while (bounding_boxes):
-
-            bounding_box = bounding_boxes.pop(0)
-
-            bounding_boxes = [
-                _bounding_box for _bounding_box in bounding_boxes
-                    if ((bounding_box[0] != _bounding_box[0]) or (bounding_box[2] != _bounding_box[2]) or
-                        (class_.list_intersection_over_union(bounding_box[-4:], _bounding_box[-4:]) < thresh_iou))
-            ]
-
-            suppressed_bounding_boxes.append(bounding_box) 
-
-        return suppressed_bounding_boxes
-    """
 
     @classmethod 
     def non_max_suppression(class_, bounding_boxes : numpy.ndarray, thresh_obj : float = 0.5, thresh_iou : float = 0.5) -> Union[ numpy.ndarray, list ]:

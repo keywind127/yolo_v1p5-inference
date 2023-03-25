@@ -19,21 +19,17 @@ if (__name__ == "__main__"):
 
     # dataset directories
 
-    """
-    image_folder = os.path.join(current_folder, "train-wiz/images")
+    dataset_version       = 5
 
-    label_folder = os.path.join(current_folder, "train-wiz/labels")
+    image_folder          = os.path.join(current_folder, f"../wiz-detect.v{dataset_version}i.yolov5pytorch/train/images")
 
-    pretrain_image_folder = os.path.join(current_folder, "train-voc/images")
+    label_folder          = os.path.join(current_folder, f"../wiz-detect.v{dataset_version}i.yolov5pytorch/train/labels")
 
-    pretrain_label_folder = os.path.join(current_folder, "train-voc/labels")
-    """
+    val_image_folder      = os.path.join(current_folder, f"../wiz-detect.v{dataset_version}i.yolov5pytorch/valid/images")
 
-    image_folder          = os.path.join(current_folder, "../wiz-detect.v2i.yolov5pytorch/train/images")
+    val_label_folder      = os.path.join(current_folder, f"../wiz-detect.v{dataset_version}i.yolov5pytorch/valid/labels")
 
-    label_folder          = os.path.join(current_folder, "../wiz-detect.v2i.yolov5pytorch/train/labels")
-
-    pretrain_image_folder = os.path.join(current_folder, "../voc-dataset.v1i.yolov5pytorch/train/images")
+    pretrain_image_folder = os.path.join(current_folder, f"../voc-dataset.v1i.yolov5pytorch/train/images")
 
     pretrain_label_folder = os.path.join(current_folder, "../voc-dataset.v1i.yolov5pytorch/train/labels")
 
@@ -59,15 +55,15 @@ if (__name__ == "__main__"):
 
     batch_size      = 32
 
-    pretrain_epochs = 10
+    pretrain_epochs = 8
 
     epochs          = 128
 
-    num_images      = 2048 + 512
+    num_images      = 2048
 
-    learning_rate   = 4e-5 #8e-5
+    learning_rate   = 5e-5 #8e-5
 
-    training_board  = None #"https://api.thingspeak.com/update?api_key=D8J9XHHCIDTQCAF9&field1={}"
+    training_board  = "https://api.thingspeak.com/update?api_key=3I9WY6ON41AUZ6IL&field1={}&field2={}"
 
     # training on PASCAL VOC DATASET
 
@@ -93,7 +89,7 @@ if (__name__ == "__main__"):
         mean_AP = yolo_model.evaluate(images, labels, verbose = 1)
         if (training_board is not None):
             try:
-                requests.get(training_board.format(mean_AP), timeout = 10)
+                requests.get(training_board.format(mean_AP, mean_AP), timeout = 10)
             except:
                 pass 
         yolo_model.fit(generator(), batch_size = batch_size, epochs = 1, shuffle = True, steps_per_epoch = quantity)
@@ -106,10 +102,10 @@ if (__name__ == "__main__"):
 
     if (training_board is not None):
         try:
-            requests.get(training_board.format(-1), timeout = 10)
+            requests.get(training_board.format(-1, -1), timeout = 10)
         except:
             pass 
-
+            
     yolo_metrics = YoloMetrics(S, C, lambda_coord, lambda_noobj, thresh_obj, thresh_iou)
 
     yolo_model = YoloModel(C = C)
@@ -123,21 +119,31 @@ if (__name__ == "__main__"):
 
     yolo_data = YoloData(S, C, input_shape)
 
-    (quantity, generator) = yolo_data.initialize_generator(batch_size, image_folder, label_folder, num_images) 
+    (quantity, generator) = yolo_data.initialize_generator(batch_size, image_folder, label_folder) 
+
+    (val_quantity, val_generator) = yolo_data.initialize_generator(batch_size, val_image_folder, val_label_folder, use_augment = False)
 
     clear_session()
     gc.collect()
 
     for epoch in range(epochs):
+
         print("Epoch: {}/{}".format(epoch + 1, epochs))
+
         (images, labels) = next(generator())
         mean_AP = yolo_model.evaluate(images, labels, verbose = 1)
+
+        (images, labels) = next(val_generator())
+        val_mAP = yolo_model.evaluate(images, labels, verbose = 1)
+
         if (training_board is not None):
             try:
-                requests.get(training_board.format(mean_AP), timeout = 10)
+                requests.get(training_board.format(mean_AP, val_mAP), timeout = 10)
             except:
                 pass 
+
         yolo_model.fit(generator(), batch_size = batch_size, epochs = 1, shuffle = True, steps_per_epoch = quantity)
+
         clear_session()
         gc.collect()
 

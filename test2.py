@@ -18,13 +18,19 @@ if not os.path.exists(model_folder):
 
 if (__name__ == "__main__"):
 
+    # >>> filepath to model and data 
+
     model_savename = os.path.join(model_folder, "yolo_v1p5-230321_230516.h5")
 
     test_folder = os.path.join(current_folder, "../wizard_data_collect/wizard_images/wizard_images3")
 
     image_names = YoloData.find_files_in_folder(test_folder)
 
-    # yolo constants / hyperparameters
+    # <<< filepath to model and data 
+
+
+
+    # >>> YOLO hyper-parameters
 
     lambda_noobj = 0.5
 
@@ -40,11 +46,17 @@ if (__name__ == "__main__"):
 
     input_shape  = (448, 448, 3) # do not change
 
+    # <<< YOLO hyper-parameters
+
+    #
+
     yolo_metrics = YoloMetrics(S, C, lambda_coord, lambda_noobj, thresh_obj, thresh_iou)
 
     yolo_model = YoloModel.load_model_from_disk(model_savename)
     
     yolo_model.compile(mean_average_precision = yolo_metrics.mean_average_precision, optimizer = "adam", loss = "mse") 
+
+    #
 
     images = preprocess_input(numpy.stack([ cv2.resize(cv2.cvtColor(cv2.imread(filename), cv2.COLOR_BGR2RGB), (input_shape[1], input_shape[0])) for filename in image_names ]))
 
@@ -76,4 +88,4 @@ if (__name__ == "__main__"):
 
         cv2.waitKey(0)
 
-        cv2.destroyAllWindows()
+    cv2.destroyAllWindows()

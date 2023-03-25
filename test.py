@@ -17,17 +17,18 @@ if not os.path.exists(model_folder):
 
 if (__name__ == "__main__"):
 
-    model_savename = os.path.join(model_folder, "yolo_v1_vgg19-230317_220431.h5")
+    # >>> filepath to model and data 
 
-    image_folder          = os.path.join(current_folder, "../Wizard-Detection.v1i.yolov5pytorch/train/images")
+    model_savename = os.path.join(model_folder, "yolo_v1p5-230321_230516.h5")
 
-    label_folder          = os.path.join(current_folder, "../Wizard-Detection.v1i.yolov5pytorch/train/labels")
+    image_folder   = os.path.join(current_folder, "../Wizard-Detection.v1i.yolov5pytorch/train/images")
 
-    pretrain_image_folder = os.path.join(current_folder, "../voc-dataset.v1i.yolov5pytorch/train/images")
+    label_folder   = os.path.join(current_folder, "../Wizard-Detection.v1i.yolov5pytorch/train/labels")
 
-    pretrain_label_folder = os.path.join(current_folder, "../voc-dataset.v1i.yolov5pytorch/train/labels")
+    # <<< filepath to model and data 
 
-    # yolo constants / hyperparameters
+
+    # >>> YOLO hyper-parameters
 
     lambda_noobj = 0.5
 
@@ -37,13 +38,15 @@ if (__name__ == "__main__"):
 
     thresh_iou   = 0.2
 
-    S            = 7 # do not change
+    S            = 14 # do not change
 
     C            = 1
 
-    pretrain_C   = 20
-
     input_shape  = (448, 448, 3) # do not change
+
+    # <<< YOLO hyper-parameters
+
+    #
 
     yolo_metrics = YoloMetrics(S, C, lambda_coord, lambda_noobj, thresh_obj, thresh_iou)
 
@@ -53,26 +56,26 @@ if (__name__ == "__main__"):
 
     yolo_data = YoloData(S, C, input_shape)
 
-    (quantity, generator) = yolo_data.initialize_generator(32, image_folder, label_folder) 
+    # 
 
-    (images, labels) = next(generator())
+    (quantity, generator) = yolo_data.initialize_generator(32, image_folder, label_folder, use_augment = False) 
 
-    yolo_model.evaluate(images, labels, verbose = 1)
+    (preprocessed_images, preprocessed_labels, images) = next(generator(include_original = True))
 
-    predictions = yolo_model.predict(images, verbose = 0)
+    yolo_model.evaluate(preprocessed_images, preprocessed_labels, verbose = 1)
 
-    (images, labels) = next(generator(is_test_set = True))
+    predictions = yolo_model.predict(preprocessed_images, verbose = 0)
 
     (true_bounding_boxes, pred_bounding_boxes) = (
-        YoloUtils.convert_cells_to_bounding_boxes(labels, S, C, False).numpy().tolist(),
-        YoloUtils.convert_cells_to_bounding_boxes(predictions, S, C,  True).numpy()
+        YoloUtils.convert_cells_to_bounding_boxes(preprocessed_labels, S, C, False).numpy().tolist(),
+        YoloUtils.convert_cells_to_bounding_boxes(predictions,         S, C,  True).numpy()
     )
 
     # pred_bounding_boxes : { (img_idx, obj, cls_idx, x, y, w, h) }
     pred_bounding_boxes = YoloUtils.non_max_suppression(pred_bounding_boxes, thresh_obj, thresh_iou)
 
     if (isinstance(pred_bounding_boxes, numpy.ndarray)):
-            pred_bounding_boxes = pred_bounding_boxes.tolist()
+        pred_bounding_boxes = pred_bounding_boxes.tolist()
 
     true_bounding_boxes = sorted(filter(lambda x : x[1] >= thresh_obj, true_bounding_boxes), key = lambda x : x[1], reverse = True)
 
@@ -80,11 +83,17 @@ if (__name__ == "__main__"):
 
         image = images[idx]
 
+        # >>> drawing detected bounding boxes 
+
         _bounding_boxes = list(filter(lambda x : x[0] == idx, pred_bounding_boxes))
 
         _bounding_boxes = list(map(lambda x : [ x[2], *x[-4:] ], _bounding_boxes))
 
         image = draw_bounding_boxes(image, _bounding_boxes)
+
+        # <<< drawing detected bounding boxes 
+
+        # >>> drawing ground-truth bounding boxes (RED)
 
         _bounding_boxes = list(filter(lambda x : x[0] == idx, true_bounding_boxes))
 
@@ -92,8 +101,10 @@ if (__name__ == "__main__"):
 
         image = draw_bounding_boxes(image, _bounding_boxes, box_color = (0, 0, 255))
 
-        cv2.imshow("Wizard Detection Test", image) 
+        # <<< drawing ground-truth bounding boxes (RED)
+
+        cv2.imshow("Wizard Detector - Model Visualizer", image) 
 
         cv2.waitKey(0)
 
-        cv2.destroyAllWindows()
+    cv2.destroyAllWindows()
