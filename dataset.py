@@ -362,6 +362,7 @@ class YoloData:
             label_filenames = list(map(lambda x : label_filenames[x], indices)) 
 
         def generate(include_original : Optional[ bool ] = False) -> Iterator[ tuple ]:
+            nonlocal augment_list
             """ 
                 Parameters:
                     [ 1 ] include_original [ whether to return original (untampered) images for illustration ]
