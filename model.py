@@ -26,15 +26,10 @@ class YoloModel(Model):
             [ "batchnorm", "yolo_norm_2" ],
             [ "conv2d", 1280, [ 1, 1 ], "same", "yolo_conv_3" ],
             [ "leakyrelu", "yolo_relu_3" ],
-            [ "batchnorm", "yolo_norm_3" ],
-            [ "conv2d", 1536, [ 3, 3 ], "same", "yolo_conv_4" ],
-            [ "leakyrelu", "yolo_relu_4" ],
-            [ "batchnorm", "yolo_norm_4" ],
-            [ "conv2d", 1280, [ 1, 1 ], "same", "yolo_conv_5" ],
-            [ "leakyrelu", "yolo_relu_5" ],
-            [ "batchnorm", "yolo_norm_5" ]
+            [ "batchnorm", "yolo_norm_3" ]
         ],
-        "output_name" : "yolo_conv_f"
+        "output_name" : "yolo_conv_f",
+        "output_conv" : [ 3, 3 ]
     }
 
     def __init__(self, architecture_config : Optional[ Dict[ str, Union[ int, str, list ] ] ] = None, C : Optional[ int ] = None, *args, **kwargs) -> None:
@@ -68,7 +63,11 @@ class YoloModel(Model):
             if (layer_type == "batchnorm"):
                 self.sub_model.add(BatchNormalization(name = layer_name))
                 continue 
-        self.conv_f = Conv2D(self.architecture_config["num_classes"] + 10, (3, 3), padding = "same", name = self.architecture_config["output_name"], activation = "sigmoid")
+
+        self.conv_f = Conv2D(self.architecture_config["num_classes"] + 10, tuple(self.architecture_config["output_conv"]), 
+            padding = "same", name = self.architecture_config["output_name"], activation = "sigmoid"
+        )
+
         self.out = self.call(self.input_layer)
         self.build((None, 448, 448, 3))
         self.mean_average_precision = None 

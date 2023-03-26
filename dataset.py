@@ -316,7 +316,9 @@ class YoloData:
                                    label_folder :           str, 
                                    max_images   : Optional[ int  ] = None, 
                                    use_augment  : Optional[ bool ] = True,
-                                   shuffle_data : Optional[ bool ] = True) -> Tuple[ int, Iterator[ tuple ] ]:
+                                   shuffle_data : Optional[ bool ] = True,
+                                   reverse_data : Optional[ bool ] = False,
+                                   augment_list : Optional[ list ] = [   ]) -> Tuple[ int, Iterator[ tuple ] ]:
         
         assert isinstance(batch_size,   int )
         assert isinstance(image_folder, str )
@@ -324,11 +326,19 @@ class YoloData:
         assert isinstance(max_images,   int ) or max_images is None 
         assert isinstance(use_augment,  bool)
         assert isinstance(shuffle_data, bool)
+        assert isinstance(reverse_data, bool)
+        assert isinstance(augment_list, list)
 
         (image_filenames, label_filenames) = (
             self.find_files_in_folder(image_folder),
             self.find_files_in_folder(label_folder)
         )
+
+        if (reverse_data):
+            (image_filenames, label_filenames) = (
+                list(reversed(image_filenames)),
+                list(reversed(label_filenames))
+            )
 
         num_images = len(image_filenames)
 
@@ -384,7 +394,12 @@ class YoloData:
 
                     # employ data augmentation 
                     if (use_augment):
-                        (images, labels) = data_augmenter.augment_images(images, labels) #, augments = [ data_augmenter.AUG_BRIGHT, data_augmenter.AUG_LRFLIP ])
+                        
+                        # use all available augmentation techniques if unspecified 
+                        if (augment_list.__len__() == 0):
+                            augment_list = None 
+
+                        (images, labels) = data_augmenter.augment_images(images, labels, augments = augment_list)
 
                     # preprocess images (ImageNet) and labels (YOLO)
                     preprocessed_data = (
