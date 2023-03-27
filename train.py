@@ -86,13 +86,13 @@ if (__name__ == "__main__"):
 
     num_images      = 2048
 
-    learning_rate   = 5e-5 #8e-5
+    learning_rate   = 4e-5 #8e-5
 
     training_board  = "https://api.thingspeak.com/update?api_key=3I9WY6ON41AUZ6IL&field1={}&field2={}"
 
     pretrain_with_voc = False
 
-    augment_list    = [  YoloDataAugmenter.AUG_BRIGHT, YoloDataAugmenter.AUG_LRFLIP  ]
+    augment_list    = [] #[  YoloDataAugmenter.AUG_BRIGHT, YoloDataAugmenter.AUG_LRFLIP  ]
 
     if (pretrain_with_voc):
 

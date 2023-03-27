@@ -372,6 +372,7 @@ class YoloData:
             """
 
             if (use_augment):
+
                 # initialize the data augmenter for YOLO training 
                 data_augmenter = YoloDataAugmenter(self.brightness_range)
 
@@ -395,12 +396,10 @@ class YoloData:
 
                     # employ data augmentation 
                     if (use_augment):
-                        
-                        # use all available augmentation techniques if unspecified 
-                        if (augment_list.__len__() == 0):
-                            augment_list = None 
 
-                        (images, labels) = data_augmenter.augment_images(images, labels, augments = augment_list)
+
+                        # use all available augmentation techniques if unspecified 
+                        (images, labels) = data_augmenter.augment_images(images, labels, augments = ((augment_list) if (augment_list.__len__()) else (None)))
 
                     # preprocess images (ImageNet) and labels (YOLO)
                     preprocessed_data = (

@@ -19,11 +19,11 @@ if (__name__ == "__main__"):
 
     # >>> filepath to model and data 
 
-    model_savename = os.path.join(model_folder, "yolo_v1p5-230321_230516.h5")
+    model_savename = os.path.join(model_folder, "yolo_v1p5-230325_214343.h5")
 
-    image_folder   = os.path.join(current_folder, "../Wizard-Detection.v1i.yolov5pytorch/train/images")
+    image_folder   = os.path.join(current_folder, "../wiz-detect.v5i.yolov5pytorch/valid/images")
 
-    label_folder   = os.path.join(current_folder, "../Wizard-Detection.v1i.yolov5pytorch/train/labels")
+    label_folder   = os.path.join(current_folder, "../wiz-detect.v5i.yolov5pytorch/valid/labels")
 
     # <<< filepath to model and data 
 
@@ -34,7 +34,7 @@ if (__name__ == "__main__"):
 
     lambda_coord = 5.0
 
-    thresh_obj   = 0.2
+    thresh_obj   = 0.05
 
     thresh_iou   = 0.2
 
