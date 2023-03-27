@@ -67,12 +67,13 @@ class YoloUtils:
 
         return intersection_over_union 
     
+    """
     @staticmethod 
     def list_intersection_over_union(bounding_box_1 : List[ float ], bounding_box_2 : List[ float ]) -> float:
-        """
-            Limitations:
-                [ 1 ] bounding_box_1 and bounding_box_2 must contain 4 values
-        """
+        #
+        #    Limitations:
+        #        [ 1 ] bounding_box_1 and bounding_box_2 must contain 4 values
+        #
 
         assert len(bounding_box_1) == 4
         assert len(bounding_box_2) == 4
@@ -105,6 +106,7 @@ class YoloUtils:
         intersection = max(x_max - x_min, 0) * max(y_max - y_min, 0)
 
         return intersection / (box_area_1 + box_area_2 - intersection + epsilon())
+    """
     
     @classmethod 
     def reduce_select_bounding_boxes(class_, y_pred : EagerTensor, box_scores : EagerTensor) -> EagerTensor:
@@ -348,3 +350,117 @@ class YoloUtils:
         #extracted_bounding_boxes = numpy.float32(extracted_bounding_boxes)
 
         return extracted_bounding_boxes 
+    
+    @classmethod 
+    def compute_mean_average_precision(class_, true_bounding_boxes : List[ List[ float ] ], 
+                                               pred_bounding_boxes : List[ List[ float ] ], 
+                                               num_classes         : Optional[ int   ] = 20, 
+                                               thresh_iou          : Optional[ float ] = 5e-1,
+                                               epsilon             : Optional[ float ] = 1e-9) -> float:
+    
+        """ 
+            Parameters:
+                [ 1 ] true_bounding_boxes [ [ img_idx, obj_scr, cls_idx, x, y, w, h ] ]
+                [ 2 ] pred_bounding_boxes [ [ img_idx, obj_scr, cls_idx, x, y, w, h ] ]
+                [ 3 ] num_classes 
+                [ 4 ] thresh_iou 
+            Restrictions:
+                [ 1 ] pred_bounding_boxes [ sorted according to objectness score in non-increasing order ]
+            Resulsts:
+                [ 1 ] mean_average_precision 
+        """
+
+        def intersection_over_union(bounding_box_1 : List[ float ], bounding_box_2 : List[ float ], epsilon : Optional[ float ] = 1e-9) -> float:
+            """
+                Limitations:
+                    [ 1 ] bounding_box_1 and bounding_box_2 must contain 4 values
+            """
+
+            assert len(bounding_box_1) == 4
+            assert len(bounding_box_2) == 4
+
+            (box_area_1, box_area_2) = (
+                bounding_box_1[2] * bounding_box_1[3],
+                bounding_box_2[2] * bounding_box_2[3]
+            )
+
+            (bounding_box_1, bounding_box_2) = ([ 
+                    bounding_box_1[0] - bounding_box_1[2] / 2,
+                    bounding_box_1[1] - bounding_box_1[3] / 2,
+                    bounding_box_1[0] + bounding_box_1[2] / 2,
+                    bounding_box_1[1] + bounding_box_1[3] / 2
+                ], [ 
+                    bounding_box_2[0] - bounding_box_2[2] / 2,
+                    bounding_box_2[1] - bounding_box_2[3] / 2,
+                    bounding_box_2[0] + bounding_box_2[2] / 2,
+                    bounding_box_2[1] + bounding_box_2[3] / 2
+                ]
+            )
+
+            (x_min, x_max, y_min, y_max) = (
+                max(bounding_box_1[0], bounding_box_2[0]), 
+                min(bounding_box_1[2], bounding_box_2[2]),
+                max(bounding_box_1[1], bounding_box_2[1]), 
+                min(bounding_box_1[3], bounding_box_2[3])
+            )
+
+            intersection = max(x_max - x_min, 0) * max(y_max - y_min, 0)
+
+            return intersection / (box_area_1 + box_area_2 - intersection + epsilon)
+
+        ground_truth_history = [ 0 ] * len(true_bounding_boxes)
+
+        # true_bounding_boxes : { (gnd_idx, img_idx, obj, cls_idx, x, y, w, h) }
+        true_bounding_boxes = list(map(lambda x : [ x[0], *x[1] ], enumerate(true_bounding_boxes)))
+
+        average_precisions = []
+
+        for class_idx in range(num_classes):
+
+            (pred_boxes, true_boxes) = (
+                list(filter(lambda x : x[2] == class_idx, pred_bounding_boxes)),
+                list(filter(lambda x : x[3] == class_idx, true_bounding_boxes))
+            )
+
+            if (true_boxes.__len__() == 0):
+                continue
+
+            (true_positive, false_positive) = (
+                numpy.zeros(len(pred_boxes)), numpy.zeros(len(pred_boxes))
+            )
+
+            for pred_idx, pred_box in enumerate(pred_boxes):
+
+                __true_boxes = list(filter(lambda x : x[1] == pred_box[0], true_boxes))
+
+                if not (__true_boxes):
+                    false_positive[pred_idx] = 1
+                    continue
+
+                (best_idx, best_iou) = (0, -1)
+
+                for true_box_idx, true_box in enumerate(__true_boxes):
+
+                    temp_iou = intersection_over_union(true_box[-4:], pred_box[-4:])
+
+                    if (best_iou < temp_iou):
+                        (best_idx, best_iou) = (true_box_idx, temp_iou)
+
+                if ((best_iou < thresh_iou) or (ground_truth_history[__true_boxes[best_idx][0]])):
+                    false_positive[pred_idx] = 1
+                    continue 
+
+                true_positive[pred_idx] = 1
+                ground_truth_history[__true_boxes[best_idx][0]] = 1
+
+            (TP_cumsum, FP_cumsum) = (
+                numpy.cumsum(true_positive, axis = 0),
+                numpy.cumsum(false_positive, axis = 0)
+            )
+            (precisions, recalls) = (
+                numpy.concatenate([ [ 1 ], TP_cumsum / (TP_cumsum + FP_cumsum + epsilon) ]),
+                numpy.concatenate([ [ 0 ], TP_cumsum / (len(true_boxes) + epsilon) ])
+            )
+            average_precisions.append(numpy.trapz(precisions, recalls))
+
+        return sum(average_precisions) / len(average_precisions)

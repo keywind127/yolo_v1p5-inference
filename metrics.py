@@ -88,12 +88,13 @@ class YoloMetrics(YoloUtils):
 
         return total_loss 
     
+    """
     def mean_average_precision(self, y_true : EagerTensor, y_pred : EagerTensor) -> float:
-        """
-            Parameters:
-                [ 1 ] y_true : (N, S, S, 25)
-                [ 2 ] y_pred : (N, S, S, 30)
-        """
+        #
+        #    Parameters:
+        #        [ 1 ] y_true : (N, S, S, 25)
+        #        [ 2 ] y_pred : (N, S, S, 30)
+        #
 
         (true_bounding_boxes, pred_bounding_boxes) = (
             self.convert_cells_to_bounding_boxes(y_true, self.S, self.C, False).numpy().tolist(),
@@ -164,3 +165,53 @@ class YoloMetrics(YoloUtils):
             average_precisions.append(numpy.trapz(precisions, recalls))
 
         return sum(average_precisions) / len(average_precisions)
+    """ 
+
+    def mean_average_precision(self, y_true    : EagerTensor, 
+                                     y_pred    : EagerTensor, 
+                                     num_steps : Optional[ int ] = None) -> Union[ float, numpy.ndarray ]:
+        """
+            Parameters:
+                [ 1 ] y_true : (N, S, S, 25)
+                [ 2 ] y_pred : (N, S, S, 30)
+                [ 3 ] num_steps [ number of "thresh_obj" to compute, if "None", computes just with default "thresh_obj" ]
+            Results:
+                [ 1 ] mean_average_precision : float [ mAP calculated with default "thresh_obj" ]
+                [ 2 ] mean_average_precision : numpy.ndarray [ mAP calculated with "thresh_obj" from Range[0, 1, 1 / "num_steps"] ]
+        """
+
+        # convert output matrix to bounding boxes containing { img_idx, obj_scr, cls_idx, x, y, w, h }
+        (true_bounding_boxes, pred_bounding_boxes) = (
+            self.convert_cells_to_bounding_boxes(y_true, self.S, self.C, False).numpy().tolist(),
+            self.convert_cells_to_bounding_boxes(y_pred, self.S, self.C,  True).numpy()
+        )
+
+        # extract bounding boxes containing objects 
+        true_bounding_boxes = list(filter(lambda x : x[1] > 0, true_bounding_boxes))
+
+        def __mean_average_precision(true_bounding_boxes : List[ List[ float ] ], 
+                                    pred_bounding_boxes : numpy.ndarray, 
+                                    thresh_obj          : float                ) -> float:
+
+            assert isinstance(true_bounding_boxes, list)
+            assert isinstance(pred_bounding_boxes, numpy.ndarray)
+            assert isinstance(thresh_obj, float)
+
+            # pred_bounding_boxes : { (img_idx, obj, cls_idx, x, y, w, h) }
+            pred_bounding_boxes = self.non_max_suppression(pred_bounding_boxes, thresh_obj, self.thresh_iou).tolist()
+
+            return self.compute_mean_average_precision(true_bounding_boxes, pred_bounding_boxes, self.C, self.thresh_iou, epsilon())
+
+        if (num_steps is None):
+            
+            # compute mAP after removing bounding boxes with objectness score less than default "thresh_obj"
+            return __mean_average_precision(true_bounding_boxes, pred_bounding_boxes, self.thresh_obj)
+
+        assert isinstance(num_steps, int)
+        assert num_steps > 0
+
+        # compute mAP after removing bounding boxes with objectness score less than various "thresh_obj" (quantity: "num_steps")
+        return numpy.stack([
+            __mean_average_precision(true_bounding_boxes, pred_bounding_boxes, float(thresh_obj))
+                for thresh_obj in numpy.arange(0, 1, (1 / num_steps), dtype = numpy.float32)[1:-1]
+        ])

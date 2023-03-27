@@ -10,7 +10,7 @@ from tensorflow.keras.layers import (
     Input
 )
 from typing import *
-import pickle, json, copy, os
+import pickle, numpy, json, copy, os
 
 class YoloModel(Model):
 
@@ -109,13 +109,48 @@ class YoloModel(Model):
         self.mean_average_precision = mean_average_precision 
         super(YoloModel, self).compile(*args, **kwargs)
 
-    def evaluate(self, test_data : EagerTensor, test_labl : EagerTensor, verbose : int = 0) -> float:
+    def evaluate(self, test_data    : EagerTensor, 
+                       test_labl    : EagerTensor, 
+                       verbose      : Optional[ int  ] = 0, 
+                       find_optimal : Optional[ bool ] = False) -> Union[ float, Tuple[ float, float ] ]:
+        """ 
+            Parameters:
+                [ 1 ] test_data : (N, 448, 448, 3)
+                [ 2 ] test_labl : (N, S, S, C + 5)
+                [ 3 ] verbose : int (bool)
+                [ 4 ] find_optimal : bool [ whether to automatically find optimal threshold ] 
+            Results:
+                [ 1 ] mAP [ if "find_optimal" is True ]
+                [ 2 ] (mAP, thresh_obj) [ otherwise ]
+        """
+        
         if (self.mean_average_precision is None):
             raise Exception("You must first compile the model with a \"mean average precision\" function.\n")
+        
         result = self.predict(test_data, verbose = 0)
+
+        if (find_optimal):
+
+            map_across_thresh_obj = self.mean_average_precision(test_labl, result, num_steps = 20)
+
+            #print(map_across_thresh_obj)
+
+            thresh_obj_idx = numpy.argmax(map_across_thresh_obj)
+
+            mean_average_precision = map_across_thresh_obj[thresh_obj_idx]
+
+            thresh_obj = float(numpy.arange(0, 1, (1 / 20), dtype = numpy.float32)[1:-1][thresh_obj_idx])
+
+            if (verbose):
+                print("mAP: {0:.5f}, thresh_obj: {1:.3f}".format(mean_average_precision, thresh_obj))
+
+            return (mean_average_precision, thresh_obj)
+
         mean_average_precision = self.mean_average_precision(test_labl, result)
+
         if (verbose):
             print("mAP: {}".format(mean_average_precision))
+
         return mean_average_precision
 
     def save_as_functional_model(self, filename : str, *args, **kwargs) -> None:

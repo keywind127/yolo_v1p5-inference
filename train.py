@@ -38,7 +38,7 @@ def confirm_existent_model_training(model_name : str) -> int:
 
 model_savename = os.path.join(model_folder, "yolo_v1p5-{}.h5".format(datetime.datetime.now().strftime("%y%m%d_%H%M%S")))
 
-#model_savename = os.path.join(model_folder, "yolo_v1p5-230325_214343.h5")
+#model_savename = os.path.join(model_folder, "yolo_v1p5-230327_215610.h5")
 
 if (__name__ == "__main__"):
 
@@ -152,16 +152,25 @@ if (__name__ == "__main__"):
 
     yolo_metrics = YoloMetrics(S, C, lambda_coord, lambda_noobj, thresh_obj, thresh_iou)
 
-    yolo_model = YoloModel(C = C)
-
-    yolo_model.summary()
-
-    yolo_model.compile(mean_average_precision = yolo_metrics.mean_average_precision,
-        optimizer = Adam(learning_rate = learning_rate), loss = yolo_metrics.loss) 
-
     if (pretrain_with_voc):
 
+        yolo_model = YoloModel(C = C)
+
+        yolo_model.summary()
+
+        yolo_model.compile(mean_average_precision = yolo_metrics.mean_average_precision,
+            optimizer = Adam(learning_rate = learning_rate), loss = yolo_metrics.loss) 
+        
         yolo_model.load_middle_weights(model_savename)
+
+    else:
+
+        yolo_model = YoloModel.load_model_from_disk(model_savename)
+
+        yolo_model.summary()
+
+        yolo_model.compile(mean_average_precision = yolo_metrics.mean_average_precision,
+            optimizer = Adam(learning_rate = learning_rate), loss = yolo_metrics.loss) 
 
     yolo_data = YoloData(S, C, input_shape)
 
