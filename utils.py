@@ -217,8 +217,8 @@ class YoloUtils:
         if (numpy.shape(bounding_boxes)[0] == 0):
             return []
 
-        # bounding_boxes : (-1, 7) [ sort bounding boxes by objectness score in non-descending order ]
-        bounding_boxes = bounding_boxes[numpy.argsort(bounding_boxes[..., 1])]
+        # bounding_boxes : (-1, 7) [ sort bounding boxes by objectness score in non-ascending order ]
+        bounding_boxes = bounding_boxes[numpy.argsort(bounding_boxes[..., 1])][::-1]
 
         def intersection_over_union(bounding_boxes : numpy.ndarray, selected_bounding_box : numpy.ndarray, epsilon : Optional[ float ] = 1e-9) -> numpy.ndarray:
             """

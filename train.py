@@ -64,9 +64,9 @@ if (__name__ == "__main__"):
 
     lambda_coord = 5.0
 
-    thresh_obj   = 0.5
+    thresh_obj   = 0.05
 
-    thresh_iou   = 0.5
+    thresh_iou   = 0.20
 
     S            = 14 # do not change
 
